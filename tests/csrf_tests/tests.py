@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import logging
+import re
 
 from django.conf import settings
 from django.core.context_processors import csrf
 from django.http import HttpRequest, HttpResponse
-from django.middleware.csrf import CsrfViewMiddleware, CSRF_KEY_LENGTH
+from django.middleware.csrf import CsrfViewMiddleware, CSRF_KEY_LENGTH, check_token
 from django.template import RequestContext, Template
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.views.decorators.csrf import csrf_exempt, requires_csrf_token, ensure_csrf_cookie
+from django.utils import six
 
 
 # Response/views used for CsrfResponseMiddleware and CsrfViewMiddleware tests
@@ -77,7 +79,10 @@ class CsrfViewMiddlewareTest(TestCase):
         return req
 
     def _check_token_present(self, response, csrf_id=None):
-        self.assertContains(response, "name='csrfmiddlewaretoken' value='%s'" % (csrf_id or self._csrf_id))
+        m = re.search(br"name='csrfmiddlewaretoken' value='([^']*)'", response.content)
+        self.assert_(m)
+        token = m.group(1).decode('utf8')
+        self.assert_(check_token((csrf_id or self._csrf_id), token))
 
     def test_process_view_token_too_long(self):
         """
