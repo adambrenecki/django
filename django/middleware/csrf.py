@@ -16,6 +16,7 @@ from django.utils.cache import patch_vary_headers
 from django.utils.encoding import force_text
 from django.utils.http import same_origin
 from django.utils.crypto import constant_time_compare, get_random_string
+from django.utils import six
 
 
 logger = logging.getLogger('django.request')
@@ -38,7 +39,7 @@ def _get_new_csrf_key():
     return get_random_string(CSRF_KEY_LENGTH)
 
 def _xor_string(a, b):
-    return ''.join(chr(ord(ac) ^ ord(bc)) for (ac, bc) in zip(a, b))
+    return u''.join(chr(ord(ac) ^ ord(bc)) for (ac, bc) in zip(a, b))
 
 def get_token(request):
     """
@@ -52,11 +53,11 @@ def get_token(request):
     """
     request.META["CSRF_COOKIE_USED"] = True
     csrf_key = request.META.get("CSRF_COOKIE", None)
-    if csrf_key is not None:
-        random_pad = _get_new_csrf_key()
-        padded_token = random_pad + _xor_string(csrf_key, random_pad)
-        return base64.b64encode(padded_token)
-    return None
+    if csrf_key is None:
+        return None
+    random_pad = _get_new_csrf_key()
+    padded_token = random_pad + _xor_string(csrf_key, random_pad)
+    return base64.b64encode(padded_token.encode('utf8')).decode('utf8')
 
 def check_token(token, returned_value):
     """
@@ -69,7 +70,7 @@ def check_token(token, returned_value):
     if constant_time_compare(token, returned_value):
         return True
 
-    returned_value = base64.b64decode(returned_value)
+    returned_value = base64.b64decode(returned_value).decode('utf8')
     random_pad = returned_value[:CSRF_KEY_LENGTH]
     returned_token = returned_value[CSRF_KEY_LENGTH:]
     returned_token = _xor_string(random_pad, returned_token)
