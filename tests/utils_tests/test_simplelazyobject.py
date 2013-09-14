@@ -136,6 +136,9 @@ class TestUtilsSimpleLazyObject(TestCase):
         self.assertEqual(lazydict['one'], 1)
         lazydict['one'] = -1
         self.assertEqual(lazydict['one'], -1)
+        self.assertTrue('one' in lazydict)
+        self.assertFalse('two' in lazydict)
+        self.assertEqual(len(lazydict), 1)
         del lazydict['one']
         with self.assertRaises(KeyError):
             lazydict['one']
@@ -178,8 +181,18 @@ class TestUtilsSimpleLazyObject(TestCase):
         pickled = pickle.dumps(x, 1)
         pickled = pickle.dumps(x, 2)
 
-        if not six.PY3:
+        if six.PY2:
             import cPickle
 
             # This would fail with "TypeError: expected string or Unicode object, NoneType found".
             pickled = cPickle.dumps(x)
+
+    def test_list_set(self):
+        lazy_list = SimpleLazyObject(lambda: [1, 2, 3, 4, 5])
+        lazy_set = SimpleLazyObject(lambda: set([1, 2, 3, 4]))
+        self.assertTrue(1 in lazy_list)
+        self.assertTrue(1 in lazy_set)
+        self.assertFalse(6 in lazy_list)
+        self.assertFalse(6 in lazy_set)
+        self.assertEqual(len(lazy_list), 5)
+        self.assertEqual(len(lazy_set), 4)

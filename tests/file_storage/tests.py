@@ -8,10 +8,6 @@ import sys
 import tempfile
 import time
 import unittest
-try:
-    from urllib.request import urlopen
-except ImportError:     # Python 2
-    from urllib2 import urlopen
 import zlib
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -28,9 +24,10 @@ from django.core.files.images import get_image_dimensions
 from django.core.files.storage import FileSystemStorage, get_storage_class
 from django.core.files.uploadedfile import UploadedFile
 from django.test import LiveServerTestCase, SimpleTestCase
-from django.utils import six
-from django.utils._os import upath
 from django.test.utils import override_settings
+from django.utils import six
+from django.utils.six.moves.urllib.request import urlopen
+from django.utils._os import upath
 
 try:
     from django.utils.image import Image
@@ -462,6 +459,18 @@ class FileStoragePermissions(unittest.TestCase):
         mode = os.stat(self.storage.path(fname))[0] & 0o777
         self.assertEqual(mode, 0o666 & ~self.umask)
 
+    @override_settings(FILE_UPLOAD_DIRECTORY_PERMISSIONS=0o765)
+    def test_file_upload_directory_permissions(self):
+        name = self.storage.save("the_directory/the_file", ContentFile("data"))
+        dir_mode = os.stat(os.path.dirname(self.storage.path(name)))[0] & 0o777
+        self.assertEqual(dir_mode, 0o765)
+
+    @override_settings(FILE_UPLOAD_DIRECTORY_PERMISSIONS=None)
+    def test_file_upload_directory_default_permissions(self):
+        name = self.storage.save("the_directory/the_file", ContentFile("data"))
+        dir_mode = os.stat(os.path.dirname(self.storage.path(name)))[0] & 0o777
+        self.assertEqual(dir_mode, 0o777 & ~self.umask)
+
 class FileStoragePathParsing(unittest.TestCase):
     def setUp(self):
         self.storage_dir = tempfile.mkdtemp()
@@ -555,9 +564,10 @@ class InconsistentGetImageDimensionsBug(unittest.TestCase):
         from django.core.files.images import ImageFile
 
         img_path = os.path.join(os.path.dirname(upath(__file__)), "test.png")
-        image = ImageFile(open(img_path, 'rb'))
-        image_pil = Image.open(img_path)
-        size_1, size_2 = get_image_dimensions(image), get_image_dimensions(image)
+        with open(img_path, 'rb') as file:
+            image = ImageFile(file)
+            image_pil = Image.open(img_path)
+            size_1, size_2 = get_image_dimensions(image), get_image_dimensions(image)
         self.assertEqual(image_pil.size, size_1)
         self.assertEqual(size_1, size_2)
 

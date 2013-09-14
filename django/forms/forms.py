@@ -185,7 +185,8 @@ class BaseForm(object):
                     'label': force_text(label),
                     'field': six.text_type(bf),
                     'help_text': help_text,
-                    'html_class_attr': html_class_attr
+                    'html_class_attr': html_class_attr,
+                    'field_name': bf.html_name,
                 })
 
         if top_errors:
@@ -297,9 +298,12 @@ class BaseForm(object):
 
     def _clean_form(self):
         try:
-            self.cleaned_data = self.clean()
+            cleaned_data = self.clean()
         except ValidationError as e:
             self._errors[NON_FIELD_ERRORS] = self.error_class(e.messages)
+        else:
+            if cleaned_data is not None:
+                self.cleaned_data = cleaned_data
 
     def _post_clean(self):
         """
@@ -431,7 +435,9 @@ class BoundField(object):
         This really is only useful for RadioSelect widgets, so that you can
         iterate over individual radio buttons in a template.
         """
-        for subwidget in self.field.widget.subwidgets(self.html_name, self.value()):
+        id_ = self.field.widget.attrs.get('id') or self.auto_id
+        attrs = {'id': id_} if id_ else {}
+        for subwidget in self.field.widget.subwidgets(self.html_name, self.value(), attrs):
             yield subwidget
 
     def __len__(self):
@@ -521,9 +527,9 @@ class BoundField(object):
         """
         contents = contents or self.label
         # Only add the suffix if the label does not end in punctuation.
+        label_suffix = label_suffix if label_suffix is not None else self.form.label_suffix
         # Translators: If found as last label character, these punctuation
         # characters will prevent the default label_suffix to be appended to the label
-        label_suffix = label_suffix if label_suffix is not None else self.form.label_suffix
         if label_suffix and contents and contents[-1] not in _(':?.!'):
             contents = format_html('{0}{1}', contents, label_suffix)
         widget = self.field.widget

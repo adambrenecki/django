@@ -227,12 +227,16 @@ class ExceptionReporter(object):
         return "File exists"
 
     def get_traceback_data(self):
-        "Return a Context instance containing traceback information."
+        """Return a dictionary containing traceback information."""
 
         if self.exc_type and issubclass(self.exc_type, TemplateDoesNotExist):
             from django.template.loader import template_source_loaders
             self.template_does_not_exist = True
             self.loader_debug_info = []
+            # If the template_source_loaders haven't been populated yet, you need
+            # to provide an empty list for this for loop to not fail.
+            if template_source_loaders is None:
+                template_source_loaders = []
             for loader in template_source_loaders:
                 try:
                     source_list_func = loader.get_template_sources
@@ -295,13 +299,13 @@ class ExceptionReporter(object):
     def get_traceback_html(self):
         "Return HTML version of debug 500 HTTP error page."
         t = Template(TECHNICAL_500_TEMPLATE, name='Technical 500 template')
-        c = Context(self.get_traceback_data())
+        c = Context(self.get_traceback_data(), use_l10n=False)
         return t.render(c)
 
     def get_traceback_text(self):
         "Return plain text version of debug 500 HTTP error page."
         t = Template(TECHNICAL_500_TEXT_TEMPLATE, name='Technical 500 template')
-        c = Context(self.get_traceback_data(), autoescape=False)
+        c = Context(self.get_traceback_data(), autoescape=False, use_l10n=False)
         return t.render(c)
 
     def get_template_exception_info(self):

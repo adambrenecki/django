@@ -204,8 +204,6 @@ The functions defined in this module share the following properties:
 
 .. function:: smart_text(s, encoding='utf-8', strings_only=False, errors='strict')
 
-    .. versionadded:: 1.5
-
     Returns a text object representing ``s`` -- ``unicode`` on Python 2 and
     ``str`` on Python 3. Treats bytestrings using the ``encoding`` codec.
 
@@ -225,8 +223,6 @@ The functions defined in this module share the following properties:
 
 .. function:: force_text(s, encoding='utf-8', strings_only=False, errors='strict')
 
-    .. versionadded:: 1.5
-
     Similar to ``smart_text``, except that lazy instances are resolved to
     strings, rather than kept as lazy objects.
 
@@ -239,8 +235,6 @@ The functions defined in this module share the following properties:
 
 .. function:: smart_bytes(s, encoding='utf-8', strings_only=False, errors='strict')
 
-    .. versionadded:: 1.5
-
     Returns a bytestring version of ``s``, encoded as specified in
     ``encoding``.
 
@@ -248,8 +242,6 @@ The functions defined in this module share the following properties:
     objects.
 
 .. function:: force_bytes(s, encoding='utf-8', strings_only=False, errors='strict')
-
-    .. versionadded:: 1.5
 
     Similar to ``smart_bytes``, except that lazy instances are resolved to
     bytestrings, rather than kept as lazy objects.
@@ -430,6 +422,64 @@ Atom1Feed
 
 .. module:: django.utils.functional
     :synopsis: Functional programming tools.
+
+.. class:: cached_property(object)
+
+    The ``@cached_property`` decorator caches the result of a method with a
+    single ``self`` argument as a property. The cached result will persist
+    as long as the instance does, so if the instance is passed around and the
+    function subsequently invoked, the cached result will be returned.
+
+    Consider a typical case, where a view might need to call a model's method
+    to perform some computation, before placing the model instance into the
+    context, where the template might invoke the method once more::
+
+        # the model
+        class Person(models.Model):
+
+            def friends(self):
+                # expensive computation
+                ...
+                return friends
+
+        # in the view:
+        if person.friends():
+
+        # in the template:
+        {% for friend in person.friends %}
+
+    Here, ``friends()`` will be called twice. Since the instance ``person`` in
+    the view and the template are the same, ``@cached_property`` can avoid
+    that::
+
+        from django.utils.functional import cached_property
+
+        @cached_property
+        def friends(self):
+            # expensive computation
+            ...
+            return friends
+
+    Note that as the method is now a property, in Python code it will need to
+    be invoked appropriately::
+
+        # in the view:
+        if person.friends:
+
+    The cached value can be treated like an ordinary attribute of the instance::
+
+        # clear it, requiring re-computation next time it's called
+        del person.friends # or delattr(person, "friends")
+
+        # set a value manually, that will persist on the instance until cleared
+        person.friends = ["Huckleberry Finn", "Tom Sawyer"]
+
+    As well as offering potential performance advantages, ``@cached_property``
+    can ensure that an attribute's value does not change unexpectedly over the
+    life of an instance. This could occur with a method whose computation is
+    based on ``datetime.now()``, or simply if a change were saved to the
+    database by some other process in the brief interval between subsequent
+    invocations of a method on the same instance.
 
 .. function:: allow_lazy(func, *resultclasses)
 
@@ -687,8 +737,6 @@ appropriate entities.
 
 .. class:: SafeBytes
 
-    .. versionadded:: 1.5
-
     A ``bytes`` subclass that has been specifically marked as "safe"
     (requires no further escaping) for HTML output purposes.
 
@@ -699,8 +747,6 @@ appropriate entities.
     :class:`SafeBytes` on Python 2 and :class:`SafeText` on Python 3.
 
 .. class:: SafeText
-
-    .. versionadded:: 1.5
 
     A ``str`` (in Python 3) or ``unicode`` (in Python 2) subclass
     that has been specifically marked as "safe" for HTML output purposes.
@@ -881,6 +927,17 @@ For a complete discussion on the usage of the following see the
 
     :class:`~datetime.tzinfo` instance that represents UTC.
 
+.. function:: get_fixed_timezone(offset)
+
+    .. versionadded:: 1.7
+
+    Returns a :class:`~datetime.tzinfo` instance that represents a time zone
+    with a fixed offset from UTC.
+
+    ``offset`` is a :class:`datetime.timedelta` or an integer number of
+    minutes. Use positive values for time zones east of UTC and negative
+    values for west of UTC.
+
 .. function:: get_default_timezone()
 
     Returns a :class:`~datetime.tzinfo` instance that represents the
@@ -918,8 +975,6 @@ For a complete discussion on the usage of the following see the
     the previously active time zone on exit. If the ``timezone`` argument is
     ``None``, the :ref:`current time zone <default-current-time-zone>` is unset
     on entry with :func:`deactivate()` instead.
-
-.. versionadded:: 1.5
 
 .. function:: localtime(value, timezone=None)
 
@@ -977,6 +1032,9 @@ For a complete discussion on the usage of the following see the
 ``django.utils.tzinfo``
 =======================
 
+.. deprecated:: 1.7
+    Use :mod:`~django.utils.timezone` instead.
+
 .. module:: django.utils.tzinfo
    :synopsis: Implementation of ``tzinfo`` classes for use with ``datetime.datetime``.
 
@@ -984,6 +1042,12 @@ For a complete discussion on the usage of the following see the
 
     Fixed offset in minutes east from UTC.
 
+    .. deprecated:: 1.7
+        Use :func:`~django.utils.timezone.get_fixed_timezone` instead.
+
 .. class:: LocalTimezone
 
     Proxy timezone information from time module.
+
+    .. deprecated:: 1.7
+        Use :func:`~django.utils.timezone.get_default_timezone` instead.
