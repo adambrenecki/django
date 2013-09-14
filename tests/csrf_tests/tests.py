@@ -11,7 +11,6 @@ from django.template import RequestContext, Template
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.views.decorators.csrf import csrf_exempt, requires_csrf_token, ensure_csrf_cookie
-from django.utils import six
 
 
 # Response/views used for CsrfResponseMiddleware and CsrfViewMiddleware tests

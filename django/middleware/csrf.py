@@ -16,7 +16,6 @@ from django.utils.cache import patch_vary_headers
 from django.utils.encoding import force_text
 from django.utils.http import same_origin
 from django.utils.crypto import constant_time_compare, get_random_string
-from django.utils import six
 
 
 logger = logging.getLogger('django.request')
