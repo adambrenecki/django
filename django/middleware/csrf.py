@@ -8,7 +8,6 @@ from __future__ import unicode_literals
 
 import logging
 import re
-import base64
 
 from django.conf import settings
 from django.core.urlresolvers import get_callable
