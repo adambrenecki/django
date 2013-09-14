@@ -27,6 +27,7 @@ REASON_NO_CSRF_COOKIE = "CSRF cookie not set."
 REASON_BAD_TOKEN = "CSRF token missing or incorrect."
 
 CSRF_KEY_LENGTH = 32
+VALID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 def _get_failure_view():
     """
@@ -38,8 +39,14 @@ def _get_failure_view():
 def _get_new_csrf_key():
     return get_random_string(CSRF_KEY_LENGTH)
 
-def _xor_string(a, b):
-    return u''.join(chr(ord(ac) ^ ord(bc)) for (ac, bc) in zip(a, b))
+def _cipher_string(token, pad, decipher=False):
+    """Applies (or de-applies if decipher is True) pad as a Vignere
+    cipher to token."""
+    f = (lambda x, y: x - y) if decipher else (lambda x, y: x + y)
+    return ''.join((
+        VALID_CHARS[f(VALID_CHARS.index(x), VALID_CHARS.index(y)) % len(VALID_CHARS)]
+        for x, y in zip(token, pad)
+    ))
 
 def get_token(request):
     """
@@ -56,8 +63,7 @@ def get_token(request):
     if csrf_key is None:
         return None
     random_pad = _get_new_csrf_key()
-    padded_token = random_pad + _xor_string(csrf_key, random_pad)
-    return base64.b64encode(padded_token.encode('utf8')).decode('utf8')
+    return random_pad + _cipher_string(csrf_key, random_pad)
 
 def check_token(token, returned_value):
     """
@@ -70,10 +76,9 @@ def check_token(token, returned_value):
     if constant_time_compare(token, returned_value):
         return True
 
-    returned_value = base64.b64decode(returned_value).decode('utf8')
     random_pad = returned_value[:CSRF_KEY_LENGTH]
     returned_token = returned_value[CSRF_KEY_LENGTH:]
-    returned_token = _xor_string(random_pad, returned_token)
+    returned_token = _cipher_string(returned_token, random_pad, decipher=True)
     return constant_time_compare(token, returned_token)
 
 
