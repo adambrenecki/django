@@ -168,6 +168,17 @@ class CsrfViewMiddlewareTest(TestCase):
         req2 = CsrfViewMiddleware().process_view(req, post_form_view, (), {})
         self.assertEqual(None, req2)
 
+    def test_process_request_token_too_short(self):
+        """
+        Check that if the POSTed token is not equal to the cookie and
+        shorter than CSRF_KEY_LENGTH, the middleware rejects the request
+        gracefully.
+        """
+        req = self._get_POST_request_with_token()
+        req.POST['csrfmiddlewaretoken'] = 'a' * (CSRF_KEY_LENGTH / 2)
+        req2 = CsrfViewMiddleware().process_view(req, post_form_view, (), {})
+        self.assertEqual(403, req2.status_code)
+
     def test_process_request_csrf_cookie_no_token_exempt_view(self):
         """
         Check that if a CSRF cookie is present and no token, but the csrf_exempt
